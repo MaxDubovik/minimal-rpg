@@ -1,10 +1,61 @@
 const socket = io();
-const output = document.getElementById('output');
+
+const playerDiv = document.getElementById('player');
+const actionsDiv = document.getElementById('actions');
+const log = document.getElementById('log');
+
+const othersDiv = document.getElementById('others');
+
+let currentPlayer = null;
+let locations = {};
+
+let allPlayers = [];
 
 socket.on('init', (data) => {
-    output.textContent = JSON.stringify(data, null, 2);
+    currentPlayer = data.player;
+    locations = Object.fromEntries(
+        data.state.locations.map(l => [l.id, l])
+    );
+    render();
 });
 
 socket.on('state:update', (state) => {
-    console.log('state updated', state);
+    allPlayers = state.players;
+
+    const me = state.players.find(p => p.id === currentPlayer.id);
+    if (me) currentPlayer = me;
+
+    render();
 });
+
+socket.on('action:error', (msg) => {
+    log.textContent = msg;
+});
+
+function render() {
+    if (!currentPlayer) return;
+
+    const location = locations[currentPlayer.location];
+
+    playerDiv.innerHTML = `
+        <strong>${currentPlayer.name}</strong><br>
+        HP: ${currentPlayer.hp}<br>
+        Location: ${location.name}
+    `;
+
+    actionsDiv.innerHTML = '';
+    location.exits.forEach(exit => {
+        const btn = document.createElement('button');
+        btn.textContent = `Go to ${locations[exit].name}`;
+        btn.onclick = () => socket.emit('player:move', exit);
+        actionsDiv.appendChild(btn);
+    });
+
+    const others = allPlayers.filter(
+        p => p.id !== currentPlayer.id && p.location === currentPlayer.location
+    );
+
+    othersDiv.innerHTML = others.length
+        ? `<strong>Others here:</strong><br>${others.map(p => p.name).join('<br>')}`
+        : '';
+}

@@ -13,6 +13,17 @@ module.exports = (io) => {
 
         io.emit('state:update', game.getState());
 
+        socket.on('player:move', (locationId) => {
+            const result = game.movePlayer(socket.id, locationId);
+
+            if (!result.ok) {
+                socket.emit('action:error', result.error);
+                return;
+            }
+
+            io.emit('state:update', game.getState());
+        });
+
         socket.on('disconnect', () => {
             console.log('a user disconnected', socket.id);
             game.removePlayer(socket.id);
