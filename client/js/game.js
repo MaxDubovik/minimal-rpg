@@ -37,7 +37,8 @@ socket.on('action:error', (msg) => {
 });
 
 socket.on('battle:log', (lines) => {
-    logDiv.textContent = lines.join('\n');
+    logDiv.textContent = lines.join('\n') + '\n\n';
+    logDiv.scrollTop = logDiv.scrollHeight;
 });
 
 function render() {
@@ -46,18 +47,41 @@ function render() {
     const location = locations[currentPlayer.location];
 
     playerDiv.innerHTML = `
-        <strong>${currentPlayer.name}</strong><br>
-        Level: ${currentPlayer.level}<br>
-        EXP: ${currentPlayer.exp} / ${currentPlayer.expToNextLevel}<br>
-        HP: ${currentPlayer.hp} / ${currentPlayer.maxHp}<br>
-        ATK: ${currentPlayer.attack}<br>
-        Location: ${location.name}
-    `;
+        <div class="space-y-2">
+            <div class="flex justify-between">
+            <span class="font-bold">${currentPlayer.name}</span>
+            <span class="text-sm text-gray-400">Lv ${currentPlayer.level}</span>
+            </div>
 
-    actionsDiv.innerHTML = '';
+            <div class="w-full bg-gray-700 rounded-full h-3">
+            <div
+                class="bg-red-600 h-3 rounded-full transition-all"
+                style="width: ${(currentPlayer.hp / currentPlayer.maxHp) * 100}%">
+            </div>
+            </div>
+
+            <div class="text-sm text-gray-400">
+            HP ${currentPlayer.hp} / ${currentPlayer.maxHp} ·
+            EXP ${currentPlayer.exp} / ${currentPlayer.expToNextLevel} ·
+            ATK ${currentPlayer.attack}
+            </div>
+
+            <div class="text-sm">
+            Location: <span class="font-semibold">${location.name}</span>
+            </div>
+        </div>
+        `;
+
+
+    actionsDiv.innerHTML = `
+        <div class="font-semibold mb-2">Move to:</div>
+      `;
+
     location.exits.forEach(exit => {
         const btn = document.createElement('button');
-        btn.textContent = `Go to ${locations[exit].name}`;
+        btn.className =
+            'px-3 py-1 me-2 rounded-lg bg-blue-600 hover:bg-blue-500 transition';
+        btn.textContent = locations[exit].name;
         btn.onclick = () => socket.emit('player:move', exit);
         actionsDiv.appendChild(btn);
     });
@@ -70,17 +94,39 @@ function render() {
         ? `<strong>Others here:</strong><br>${others.map(p => p.name).join('<br>')}`
         : '';
 
-    if (location.enemies.length) {
-        const enemiesBlock = document.createElement('div');
-        enemiesBlock.innerHTML = '<strong>Enemies:</strong><br>';
-
-        location.enemies.forEach(enemy => {
-            const btn = document.createElement('button');
-            btn.textContent = `${enemy.name} (${enemy.hp}/${enemy.maxHp})`;
-            btn.onclick = () => socket.emit('player:attack', enemy.id);
-            enemiesBlock.appendChild(btn);
-        });
-
-        actionsDiv.appendChild(enemiesBlock);
-    }
+        if (location.enemies.length) {
+            const enemiesBlock = document.createElement('div');
+            enemiesBlock.className = 'pt-4 space-y-2';
+            enemiesBlock.innerHTML = '<div class="font-semibold">Enemies:</div>';
+          
+            location.enemies.forEach(enemy => {
+                const wrapper = document.createElement('div');
+                wrapper.className =
+                'flex items-center justify-between bg-gray-700 rounded-lg p-2';
+            
+                wrapper.innerHTML = `
+                <div>
+                    <div>${enemy.name}</div>
+                    <div class="w-32 bg-gray-600 rounded-full h-2 mt-1">
+                    <div
+                        class="bg-red-500 h-2 rounded-full"
+                        style="width: ${(enemy.hp / enemy.maxHp) * 100}%">
+                    </div>
+                    </div>
+                </div>
+                `;
+          
+                const btn = document.createElement('button');
+                btn.className =
+                'px-3 py-1 rounded bg-red-600 hover:bg-red-500 transition';
+                btn.textContent = 'Attack';
+                btn.onclick = () => socket.emit('player:attack', enemy.id);
+            
+                wrapper.appendChild(btn);
+                enemiesBlock.appendChild(wrapper);
+            });
+          
+            actionsDiv.appendChild(enemiesBlock);
+        }
+          
 }
